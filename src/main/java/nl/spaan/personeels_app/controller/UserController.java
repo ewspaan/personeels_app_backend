@@ -29,10 +29,16 @@ public class UserController {
         return userService.getUser(headers.get("authorization"));
     }
 
-    @GetMapping("/add")
+    @PostMapping("/add")
     @PreAuthorize("hasRole('MODERATOR')")
     public ResponseEntity<?> addUser(@RequestHeader Map<String, String> headers,
                                      @RequestBody SignupRequest signupRequest) {
         return userService.addUser(headers.get("authorization"),signupRequest);
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('MODERATOR') or hasRole('USER')")
+    public ResponseEntity<?> getAllRoommates(@RequestHeader Map<String, String> headers){
+        return userService.getAllEmployees(headers.get("authorization"));
     }
 }

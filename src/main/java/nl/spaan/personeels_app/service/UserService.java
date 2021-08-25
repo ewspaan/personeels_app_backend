@@ -2,8 +2,11 @@ package nl.spaan.personeels_app.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import nl.spaan.personeels_app.model.ERole;
+import nl.spaan.personeels_app.model.Role;
 import nl.spaan.personeels_app.model.User;
 import nl.spaan.personeels_app.payload.request.SignupRequest;
+import nl.spaan.personeels_app.payload.response.MessageResponse;
 import nl.spaan.personeels_app.payload.response.UserResponse;
 import nl.spaan.personeels_app.repository.RoleRepository;
 import nl.spaan.personeels_app.repository.UserRepository;
@@ -14,7 +17,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.xml.bind.DatatypeConverter;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,9 +60,38 @@ public class UserService {
 
     public ResponseEntity<?> addUser(String token, SignupRequest signupRequest) {
 
-        User newUser = AuthorizationService.createUser(signupRequest);
+        if (Boolean.TRUE.equals(userRepository.existsByUsername(signupRequest.getUsername()))) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(new MessageResponse("Error: Username is al in gebruik"));
+        }
 
+        User newUser = new User(signupRequest.getUsername(), encoder.encode(signupRequest.getPassword()),signupRequest.getFirstName(),signupRequest.getLastName(),signupRequest.getEmail());
+        newUser.setPhoneNumber("06-123456");
+        newUser.setDateOfBirth("01-02-2000");
+        newUser.setCompany(getUserFromToken(token).getCompany());
+        Set<Role> roles = new HashSet<>();
+        Role modRole = roleRepository.findByName(ERole.ROLE_USER).orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
+        roles.add(modRole);
+        newUser.setRoles(roles);
+        userRepository.save(newUser);
         return null;
+    }
+
+    public ResponseEntity<?> getAllEmployees(String token) {
+
+        User user = getUserFromToken(token);
+        List<User> users = userRepository.findAllByCompanyId(user.getCompany().getId());
+
+        if(users.size() == 1) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Geen huisgenoten gevonden"));
+        }
+        List<UserResponse> employees = new ArrayList<>();
+        for (User value : users) {
+            UserResponse userResponse = createUserResponse(value);
+            employees.add(userResponse);
+        }
+        return ResponseEntity.ok(employees);
     }
 
     private String getUsernameFromToken(String token) {
@@ -102,6 +137,7 @@ public class UserService {
         userResponse.setCompanyName(user.getCompany().getCompanyName());
         return userResponse;
     }
+
 
 
 }

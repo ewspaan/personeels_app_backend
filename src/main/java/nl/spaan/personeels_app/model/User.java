@@ -30,6 +30,16 @@ public class User {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
+    public User() {
+    }
+
+    public User(String username, String password, String firstName, String lastName, String email) {
+        this.username = username;
+        this.password = password;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+    }
 
     public Long getId() {
         return id;

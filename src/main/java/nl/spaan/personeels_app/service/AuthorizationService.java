@@ -69,13 +69,13 @@ public class AuthorizationService {
         this.jwtUtils = jwtUtils;
     }
 
-    public ResponseEntity<MessageResponse> registerUser(@Valid SignupRequest signUpRequest) {
-        if (Boolean.TRUE.equals(userRepository.existsByUsername(signUpRequest.getUsername()))) {
+    public ResponseEntity<MessageResponse> registerUser(@Valid SignupRequest signupRequest) {
+        if (Boolean.TRUE.equals(userRepository.existsByUsername(signupRequest.getUsername()))) {
             return ResponseEntity
                     .badRequest()
                     .body(new MessageResponse("Error: Username is al in gebruik"));
         }
-        if (!checkPasswordIsEqual(signUpRequest.getPassword(),signUpRequest.getPasswordRepeat())){
+        if (!checkPasswordIsEqual(signupRequest.getPassword(), signupRequest.getPasswordRepeat())) {
             System.out.println("bla password vals");
             return ResponseEntity
                     .badRequest()
@@ -83,11 +83,16 @@ public class AuthorizationService {
         }
         System.out.println("bla nieuwe user");
         // Create new user and company
-        User user = createUser(signUpRequest);
+        User user = new User(signupRequest.getUsername(), encoder.encode(signupRequest.getPassword()),signupRequest.getFirstName(),signupRequest.getLastName(),signupRequest.getEmail());
         Company company = new Company();
         user.setCompany(company);
 
-        company.setCompanyName(signUpRequest.getCompanyName());
+        Set<Role> roles = new HashSet<>();
+        Role modRole = roleRepository.findByName(ERole.ROLE_MODERATOR).orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
+        roles.add(modRole);
+        user.setRoles(roles);
+
+        company.setCompanyName(signupRequest.getCompanyName());
         companyRepository.save(company);
         userRepository.save(user);
 
@@ -114,24 +119,7 @@ public class AuthorizationService {
 
     }
 
-    public boolean checkPasswordIsEqual(String password, String passwordRepeat){
+    public boolean checkPasswordIsEqual(String password, String passwordRepeat) {
         return password.equals(passwordRepeat);
-    }
-
-    public static User createUser(SignupRequest signUpRequest){
-
-        User user = new User();
-        user.setUsername(signUpRequest.getUsername());
-        user.setPassword(encoder.encode(signUpRequest.getPassword()));
-        user.setFirstName(signUpRequest.getFirstName());
-        user.setLastName(signUpRequest.getLastName());
-        user.setEmail(signUpRequest.getEmail());
-
-        Set<Role> roles = new HashSet<>();
-        Role modRole = roleRepository.findByName(ERole.ROLE_MODERATOR).orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
-        roles.add(modRole);
-        user.setRoles(roles);
-
-        return user;
     }
 }
