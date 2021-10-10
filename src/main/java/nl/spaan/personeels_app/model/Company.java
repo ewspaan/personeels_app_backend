@@ -24,6 +24,11 @@ public class Company {
             orphanRemoval = true)
     private List<User> user;
 
+    @OneToMany(mappedBy = "company",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true)
+    private List<StandardRosterDay> standardRosterDays;
+
 
     public Long getId() {
         return id;
@@ -71,5 +76,13 @@ public class Company {
 
     public void setUser(List<User> user) {
         this.user = user;
+    }
+
+    public List<StandardRosterDay> getStandardRosterDays() {
+        return standardRosterDays;
+    }
+
+    public void setStandardRosterDays(List<StandardRosterDay> standardRosterDays) {
+        this.standardRosterDays = standardRosterDays;
     }
 }

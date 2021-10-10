@@ -2,12 +2,11 @@ package nl.spaan.personeels_app.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import nl.spaan.personeels_app.model.ERole;
-import nl.spaan.personeels_app.model.Role;
-import nl.spaan.personeels_app.model.User;
+import nl.spaan.personeels_app.model.*;
 import nl.spaan.personeels_app.payload.request.SignupRequest;
 import nl.spaan.personeels_app.payload.response.MessageResponse;
 import nl.spaan.personeels_app.payload.response.UserResponse;
+import nl.spaan.personeels_app.repository.FunctionRepository;
 import nl.spaan.personeels_app.repository.RoleRepository;
 import nl.spaan.personeels_app.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +36,8 @@ public class UserService {
 
     private RoleRepository roleRepository;
 
+    private FunctionRepository functionRepository;
+
     private PasswordEncoder encoder;
 
     @Autowired
@@ -52,6 +53,11 @@ public class UserService {
     @Autowired
     public void setRoleRepository(RoleRepository roleRepository) {
         this.roleRepository = roleRepository;
+    }
+
+    @Autowired
+    public void setFunctionRepository(FunctionRepository functionRepository) {
+        this.functionRepository = functionRepository;
     }
 
     public ResponseEntity<?> getUser(String authorization) {
@@ -74,6 +80,10 @@ public class UserService {
         Role modRole = roleRepository.findByName(ERole.ROLE_USER).orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
         roles.add(modRole);
         newUser.setRoles(roles);
+        Set<Function> function = new HashSet<>();
+        Function modFunction = functionRepository.findByName(EFunction.FUNCTION_COOK).orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
+        function.add(modFunction);
+        newUser.setFunction(function);
         userRepository.save(newUser);
         return null;
     }
@@ -94,17 +104,7 @@ public class UserService {
         return ResponseEntity.ok(employees);
     }
 
-    private String getUsernameFromToken(String token) {
-        String tokenWithoutBearer = removePrefix(token);
-
-        Claims claims = Jwts.parser()
-                .setSigningKey(DatatypeConverter.parseBase64Binary(jwtSecret))
-                .parseClaimsJws(tokenWithoutBearer).getBody();
-
-        return claims.getSubject();
-    }
-
-    private User getUserFromToken(String token) {
+    private User getUsernameFromToken(String token) {
         String tokenWithoutBearer = removePrefix(token);
 
         Claims claims = Jwts.parser()
@@ -113,6 +113,11 @@ public class UserService {
         User user = userRepository.findByUsername(claims.getSubject()).get();
 
         return user;
+    }
+
+    public User getUserFromToken(String token) {
+
+        return getUsernameFromToken(token);
     }
 
     private String removePrefix(String token) {

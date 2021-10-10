@@ -1,6 +1,7 @@
 package nl.spaan.personeels_app.model;
 
 import javax.persistence.*;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -26,9 +27,22 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles;
 
+    @ManyToMany
+    @JoinTable (name = "user_function",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "function_id"))
+    private Set<Function> function;
+
     @ManyToOne
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
+
+
+    @OneToMany (
+            mappedBy = "user",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
+    private List<Shift> shift;
 
     public User() {
     }
@@ -119,5 +133,21 @@ public class User {
 
     public void setCompany(Company company) {
         this.company = company;
+    }
+
+    public List<Shift> getShift() {
+        return shift;
+    }
+
+    public void setShift(List<Shift> shift) {
+        this.shift = shift;
+    }
+
+    public Set<Function> getFunction() {
+        return function;
+    }
+
+    public void setFunction(Set<Function> function) {
+        this.function = function;
     }
 }
