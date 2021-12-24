@@ -2,7 +2,6 @@ package nl.spaan.personeels_app.model;
 
 
 import javax.persistence.*;
-import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
@@ -12,14 +11,23 @@ public class Shift {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    LocalDate dateShift;
-    LocalTime startShift;
-    LocalTime endShift;
-    String function;
+    private LocalTime startTime;
+    private LocalTime endTime;
+    private String function;
+    private int multiply;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id")
     private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "week_day_id", nullable = false)
+    private WeekDay weekDay;
+
+    @ManyToOne
+    @JoinColumn(name="standard_roster_time_id")
+    private StandardRosterTime standardRosterTime;
+
 
     public Long getId() {
         return id;
@@ -29,28 +37,20 @@ public class Shift {
         this.id = id;
     }
 
-    public LocalDate getDateShift() {
-        return dateShift;
+    public LocalTime getStartTime() {
+        return startTime;
     }
 
-    public void setDateShift(LocalDate dateShift) {
-        this.dateShift = dateShift;
+    public void setStartTime(LocalTime startTime) {
+        this.startTime = startTime;
     }
 
-    public LocalTime getStartShift() {
-        return startShift;
+    public LocalTime getEndTime() {
+        return endTime;
     }
 
-    public void setStartShift(LocalTime startShift) {
-        this.startShift = startShift;
-    }
-
-    public LocalTime getEndShift() {
-        return endShift;
-    }
-
-    public void setEndShift(LocalTime endShift) {
-        this.endShift = endShift;
+    public void setEndTime(LocalTime endShift) {
+        this.endTime = endShift;
     }
 
     public String getFunction() {
@@ -61,11 +61,35 @@ public class Shift {
         this.function = function;
     }
 
+    public int getMultiply() {
+        return multiply;
+    }
+
+    public void setMultiply(int multiply) {
+        this.multiply = multiply;
+    }
+
     public User getUser() {
         return user;
     }
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public WeekDay getWeekDay() {
+        return weekDay;
+    }
+
+    public void setWeekDay(WeekDay weekDay) {
+        this.weekDay = weekDay;
+    }
+
+    public StandardRosterTime getStandardRosterTime() {
+        return standardRosterTime;
+    }
+
+    public void setStandardRosterTime(StandardRosterTime standardRosterTime) {
+        this.standardRosterTime = standardRosterTime;
     }
 }

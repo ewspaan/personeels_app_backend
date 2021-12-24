@@ -42,7 +42,7 @@ public class User {
             mappedBy = "user",
             cascade = CascadeType.ALL,
             orphanRemoval = true)
-    private List<Shift> shift;
+    private List<Shift> shifts;
 
     public User() {
     }
@@ -135,12 +135,12 @@ public class User {
         this.company = company;
     }
 
-    public List<Shift> getShift() {
-        return shift;
+    public List<Shift> getShifts() {
+        return shifts;
     }
 
-    public void setShift(List<Shift> shift) {
-        this.shift = shift;
+    public void setShifts(List<Shift> shift) {
+        this.shifts = shift;
     }
 
     public Set<Function> getFunction() {

@@ -10,28 +10,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 @Service
-public class RosterService {
+public class StandardRosterService {
 
     private UserService userService;
-
-    private StandardRosterDayRepository standardRosterDayRepository;
-
-    private StandardRosterTimeRepository standardRosterTimeRepository;
 
     @Autowired
     public void setUserService(UserService userService) {
         this.userService = userService;
     }
 
+    private StandardRosterDayRepository standardRosterDayRepository;
+
     @Autowired
     public void setStandardRosterDayRepository(StandardRosterDayRepository standardRosterDayRepository) {
         this.standardRosterDayRepository = standardRosterDayRepository;
     }
+
+    private StandardRosterTimeRepository standardRosterTimeRepository;
 
     @Autowired
     public void setStandardRosterTimeRepository(StandardRosterTimeRepository standardRosterTimeRepository) {
@@ -44,35 +43,19 @@ public class RosterService {
             return ResponseEntity.ok("Time incorrect");
         }
         Company company = userService.getUserFromToken(authorization).getCompany();
+
         List <StandardRosterDay> standardRosterDays = new ArrayList<>(standardRosterDayRepository.findAllByCompany(company));
         if (standardRosterDays.size() == 0){
             createStandardRosterDays(company);
         }
-        standardRosterDays = standardRosterDayRepository.findAllByCompany(company);
-        for(StandardRosterDay standardRosterDay : standardRosterDays) {
-            if(Objects.equals(standardRosterDay.getDay(), rosterRequest.getDay().toUpperCase())){
-                System.out.println("dag--> " + standardRosterDay.getDay() + "  " + standardRosterDay.getId());
-                    List<StandardRosterTime> standardRosterTimes = standardRosterTimeRepository.findByStandardRosterDayId(standardRosterDay.getId());
-                    if (standardRosterTimes.size() == 0){
-                        saveNewStandardRosterTime(standardRosterDay,rosterRequest);
-                    }
-                    for (StandardRosterTime rosterTime : standardRosterTimes) {
-                        if (Objects.equals(rosterRequest.getStartTimeHour(), rosterTime.getStartTimeHour())
-                                && Objects.equals(rosterRequest.getStartTimeMinute(), rosterTime.getStartTimeMinute())
-                                && Objects.equals(rosterRequest.getEndTimeHour(), rosterTime.getEndTimeHour())
-                                && Objects.equals(rosterRequest.getEndTimeMinute(), rosterTime.getEndTimeMinute())
-                                && Objects.equals(standardRosterDay.getId(), rosterTime.getId())) {
-                            System.out.println("Gelijk--> " + rosterRequest.getEndTimeMinute());
-                            System.out.println("Gelijk--> " + standardRosterDay.getDay());
-                            rosterTime.setMultiply(rosterTime.getMultiply()+rosterRequest.getMultiply());
-                            System.out.println("Gelijk--> " + standardRosterDay.getDay());
-                            standardRosterTimeRepository.save(rosterTime);
-                        }
-                        else {
-                            saveNewStandardRosterTime(standardRosterDay,rosterRequest);
-                        }
-                    }
-                }
+        StandardRosterTime standardRosterTime = checkStandardRosterTimeExists(company,rosterRequest);
+        StandardRosterDay standardRosterDay = standardRosterDayRepository.findByCompanyAndDay(company,rosterRequest.getDay().toUpperCase());
+        if(standardRosterTime == null){
+            saveNewStandardRosterTime(standardRosterDay,rosterRequest);
+        }
+        if(standardRosterTime !=null){
+            standardRosterTime.setMultiply(standardRosterTime.getMultiply() + 1);
+            standardRosterTimeRepository.save(standardRosterTime);
         }
         return null;
     }
@@ -84,13 +67,30 @@ public class RosterService {
         return ResponseEntity.ok(createStandardRosterResponse(user.getCompany()));
     }
 
+    public ResponseEntity<?> deleteStandardRoster(String token, RosterRequest rosterRequest) {
+
+        if(!validatedRosterRequest(rosterRequest)){
+            return ResponseEntity.ok("Time incorrect");
+        }
+        Company company = userService.getUserFromToken(token).getCompany();
+        StandardRosterTime standardRosterTime = checkStandardRosterTimeExists(company,rosterRequest);
+        if(standardRosterTime == null){
+            return null;
+        }
+        standardRosterTime.setMultiply(standardRosterTime.getMultiply() - 1);
+        if(standardRosterTime.getMultiply() == 0){
+            standardRosterTimeRepository.delete(standardRosterTime);
+            return null;
+        }
+        standardRosterTimeRepository.save(standardRosterTime);
+        return null;
+    }
+
     private LocalTime convertStringToLocaltime(String hour, String minute) {
 
         int hourTemp = Integer.parseInt(hour);
         int minuteTemp = Integer.parseInt(minute);
-        LocalTime time = LocalTime.of(hourTemp, minuteTemp, 0, 0);
-        System.out.println("Time--> " + time);
-        return time;
+        return LocalTime.of(hourTemp, minuteTemp, 0, 0);
     }
 
     private boolean validatedRosterRequest(RosterRequest rosterRequest){
@@ -141,9 +141,15 @@ public class RosterService {
 
     private boolean validateTime(String hour, String minute) {
 
-        int hourTemp = Integer.parseInt(hour);
-        int minuteTemp = Integer.parseInt(minute);
-        if (hourTemp > 0 && hourTemp < 24) {
+        int hourTemp = 0;
+        int minuteTemp =0;
+        if(!Objects.equals(hour, "")) {
+             hourTemp = Integer.parseInt(hour);
+        }
+        if(!Objects.equals(minute, "")) {
+            minuteTemp = Integer.parseInt(minute);
+        }
+        if (hourTemp >= 0 && hourTemp < 24) {
             return minuteTemp < 0 || minuteTemp >= 60;
         }
         return true;
@@ -155,6 +161,7 @@ public class RosterService {
         List<StandardRosterResponse> standardRosterResponses = new ArrayList<>();
         for (StandardRosterDay standardRosterDay : standardRosterDays){
             List<StandardRosterTime> standardRosterTimes = standardRosterDay.getStandardRosterTimes();
+            standardRosterTimes.sort(Comparator.comparing(StandardRosterTime::getStartTime));
             for (StandardRosterTime standardRosterTime : standardRosterTimes){
                 for(int i = standardRosterTime.getMultiply(); i > 0; i--){
                     StandardRosterResponse standardRosterResponse1 = new StandardRosterResponse();
@@ -162,6 +169,12 @@ public class RosterService {
                     standardRosterResponse1.setStartTime(standardRosterTime.getStartTime());
                     standardRosterResponse1.setEndTime(standardRosterTime.getEndTime());
                     standardRosterResponse1.setEndTimeNeeded(standardRosterTime.isEndTimeNeeded());
+                    standardRosterResponse1.setTotalTimeInMinutes(standardRosterTime.getTotalTime());
+                    standardRosterResponse1.setStartTimeHour(Integer.parseInt(standardRosterTime.getStartTimeHour()));
+                    standardRosterResponse1.setStartTimeMinute(Integer.parseInt(standardRosterTime.getStartTimeMinute()));
+                    standardRosterResponse1.setEndTimeHour(Integer.parseInt(standardRosterTime.getEndTimeHour()));
+                    standardRosterResponse1.setEndTimeMinute(Integer.parseInt(standardRosterTime.getEndTimeMinute()));
+                    standardRosterResponse1.setMultiply(standardRosterTime.getMultiply());
                     standardRosterResponses.add(standardRosterResponse1);
                 }
             }
@@ -169,15 +182,9 @@ public class RosterService {
         return standardRosterResponses;
     }
 
-    private void saveNewStandardRosterDay(Company company, RosterRequest rosterRequest){
-        StandardRosterDay standardRosterDay = new StandardRosterDay();
-        standardRosterDay.setDay(rosterRequest.getDay());
-        standardRosterDay.setCompany(company);
-        standardRosterDayRepository.save(standardRosterDay);
-        saveNewStandardRosterTime(standardRosterDay,rosterRequest);
-    }
 
     private void saveNewStandardRosterTime(StandardRosterDay standardRosterDay, RosterRequest rosterRequest){
+
         StandardRosterTime standardRosterTime = new StandardRosterTime();
         standardRosterTime.setStartTime(convertStringToLocaltime(rosterRequest.getStartTimeHour(), rosterRequest.getStartTimeMinute()));
         standardRosterTime.setEndTime(convertStringToLocaltime(rosterRequest.getEndTimeHour(), rosterRequest.getEndTimeMinute()));
@@ -185,9 +192,10 @@ public class RosterService {
         standardRosterTime.setStartTimeMinute(rosterRequest.getStartTimeMinute());
         standardRosterTime.setEndTimeHour(rosterRequest.getEndTimeHour());
         standardRosterTime.setEndTimeMinute(rosterRequest.getEndTimeMinute());
-        standardRosterTime.setMultiply(rosterRequest.getMultiply());
+        standardRosterTime.setMultiply(1);
         standardRosterTime.setEndTimeNeeded(rosterRequest.isEndTime());
         standardRosterTime.setStandardRosterDay(standardRosterDay);
+        standardRosterTime.setTotalTime(calculateTimeBetweenStartTimeAndEndTime(standardRosterTime.getStartTime(),standardRosterTime.getEndTime()));
         standardRosterTimeRepository.save(standardRosterTime);
     }
 
@@ -203,4 +211,32 @@ public class RosterService {
         }
     }
 
+    private long calculateTimeBetweenStartTimeAndEndTime(LocalTime startTime, LocalTime endTime ){
+
+        return ChronoUnit.MINUTES.between(startTime, endTime);
+    }
+
+    private StandardRosterTime checkStandardRosterTimeExists(Company company, RosterRequest rosterRequest){
+
+        StandardRosterDay standardRosterDay = standardRosterDayRepository.findByCompanyAndDay(company, rosterRequest.getDay().toUpperCase());
+        if(standardRosterDay == null){
+            return null;
+        }
+        List<StandardRosterTime> standardRosterTimes = standardRosterTimeRepository.findByStandardRosterDayId(standardRosterDay.getId());
+        for(StandardRosterTime standardRosterTime : standardRosterTimes){
+            if(Objects.equals(standardRosterTime.getStartTimeHour(), rosterRequest.getStartTimeHour())){
+                if(Objects.equals(standardRosterTime.getStartTimeMinute(), rosterRequest.getStartTimeMinute())){
+                    if(Objects.equals(standardRosterTime.getEndTimeHour(), rosterRequest.getEndTimeHour())){
+                        if(Objects.equals(standardRosterTime.getEndTimeMinute(), rosterRequest.getEndTimeMinute())){
+                            return standardRosterTime;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
 }
+
+

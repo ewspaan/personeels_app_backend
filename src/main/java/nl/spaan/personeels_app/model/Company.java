@@ -29,6 +29,12 @@ public class Company {
         orphanRemoval = true)
     private List<StandardRosterDay> standardRosterDays;
 
+    @OneToMany (
+            mappedBy = "company",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
+    private List<WeekRoster> weekRosters;
+
 
     public Long getId() {
         return id;
@@ -84,5 +90,13 @@ public class Company {
 
     public void setStandardRosterDays(List<StandardRosterDay> standardRosterDays) {
         this.standardRosterDays = standardRosterDays;
+    }
+
+    public List<WeekRoster> getWeekRosters() {
+        return weekRosters;
+    }
+
+    public void setWeekRosters(List<WeekRoster> weekRosters) {
+        this.weekRosters = weekRosters;
     }
 }

@@ -3,6 +3,7 @@ package nl.spaan.personeels_app.model;
 
 import javax.persistence.*;
 import java.time.LocalTime;
+import java.util.List;
 
 @Entity
 @Table(name = "standard_roster_times")
@@ -20,10 +21,18 @@ public class StandardRosterTime {
     private String endTimeMinute;
     private boolean endTimeNeeded;
     private int multiply;
+    private long totalTime;
 
     @ManyToOne
     @JoinColumn(name = "standard_roster_day_id", nullable = false)
     private StandardRosterDay standardRosterDay;
+
+    @OneToMany (
+            mappedBy = "standardRosterTime",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
+    private List<Shift> shifts;
+
 
     public Long getId() {
         return id;
@@ -103,5 +112,21 @@ public class StandardRosterTime {
 
     public void setEndTimeMinute(String endTimeMinute) {
         this.endTimeMinute = endTimeMinute;
+    }
+
+    public long getTotalTime() {
+        return totalTime;
+    }
+
+    public void setTotalTime(long totalTime) {
+        this.totalTime = totalTime;
+    }
+
+    public List<Shift> getShifts() {
+        return shifts;
+    }
+
+    public void setShifts(List<Shift> shifts) {
+        this.shifts = shifts;
     }
 }
